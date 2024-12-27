@@ -1,1 +1,1 @@
-Nesneye Yönelik Programlama Projesi: Konsol Tabanlı Borsa Simulasyonu
+Nesneye Yönelik Programlama Projesi - Konsol Tabanlı Borsa Simulasyonu
