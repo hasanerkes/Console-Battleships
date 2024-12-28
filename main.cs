@@ -1,5 +1,3 @@
-using BCrypt.Net;
-
 public enum UserRole
 {
     Customer,
@@ -12,7 +10,7 @@ public class User
     public decimal Balance { get; private set; }
     public UserRole Role { get; private set; }
 
-    private string _passwordHash;
+    private string _password;
     private List<StockHolding> _portfolio;
 
     public User(string username, string password, decimal initialBalance = 1000, UserRole role = UserRole.Customer)
@@ -21,13 +19,13 @@ public class User
         Balance = initialBalance;
         Role = role;
 
-        _passwordHash = BCrypt.Net.BCrypt.HashPassword(password);  // Use bcrypt to hash the password
+        _password = password;
         _portfolio = new List<StockHolding>();
     }
 
     public bool ValidatePassword(string password)
     {
-        return BCrypt.Net.BCrypt.Verify(password, _passwordHash);  // Verify password hash
+        return password == _password;
     }
 
     public bool IsAdmin() => Role == UserRole.Admin;
@@ -46,7 +44,7 @@ public class User
 
     public bool SellStock(Stock stock, int quantity)
     {
-        var holding = _portfolio.FirstOrDefault(h => h.Symbol == stock.Symbol);
+        var holding = _portfolio.FirstOrDefault(item => item.SymbolIndex == stock.Symbol);
         if (holding != null && holding.Quantity >= quantity)
         {
             holding.Quantity -= quantity;
@@ -59,7 +57,7 @@ public class User
 
     private void AddToPortfolio(Stock stock, int quantity)
     {
-        var existingHolding = _portfolio.FirstOrDefault(h => h.Symbol == stock.Symbol);
+        var existingHolding = _portfolio.FirstOrDefault(item => item.SymbolIndex == stock.Symbol);
         if (existingHolding != null)
         {
             existingHolding.Quantity += quantity;
@@ -76,12 +74,12 @@ public class User
 
 public class StockHolding
 {
-    public string Symbol { get; }
+    public string SymbolIndex { get; }
     public int Quantity { get; set; }
 
     public StockHolding(string symbol, int quantity)
     {
-        Symbol = symbol;
+        SymbolIndex = symbol;
         Quantity = quantity;
     }
 
@@ -230,6 +228,7 @@ class Program
 
     static void ViewAllUsers(StockExchange stockExchange)
     {
+        Console.Clear();
         Console.WriteLine("List of All Users:");
         foreach (var user in stockExchange.Users)
         {
@@ -274,6 +273,7 @@ class Program
 
     static void BuyStock(User user, StockExchange stockExchange)
     {
+        Console.Clear();
         Console.WriteLine("Enter Stock Symbol to Buy:");
         string symbol = Console.ReadLine();
         Console.WriteLine("Enter Number of Shares:");
@@ -292,6 +292,7 @@ class Program
 
     static void SellStock(User user, StockExchange stockExchange)
     {
+        Console.Clear();
         Console.WriteLine("Enter Stock Symbol to Sell:");
         string symbol = Console.ReadLine();
         Console.WriteLine("Enter Number of Shares:");
@@ -310,10 +311,11 @@ class Program
 
     static void ViewPortfolio(User user)
     {
+        Console.Clear();
         Console.WriteLine("Your Portfolio:");
         foreach (var holding in user.GetPortfolio())
         {
-            Console.WriteLine($"Stock: {holding.Symbol}, Quantity: {holding.Quantity}");
+            Console.WriteLine($"Stock: {holding.SymbolIndex}, Quantity: {holding.Quantity}");
         }
     }
 
@@ -326,12 +328,12 @@ class Program
     {
         StockExchange stockExchange = new StockExchange();
 
-        // Create a few sample stocks for testing
+        // Örnek Stoklar Ekle
         stockExchange.AddStock(new Stock("AAPL", "Apple Inc.", 150.00m));
         stockExchange.AddStock(new Stock("TSLA", "Tesla Inc.", 300.00m));
 
-        // Create sample users
-        stockExchange.CreateUser("admin_user", "admin123", UserRole.Admin);
+        // Yönetici Hesabı Oluştur
+        stockExchange.CreateUser("admin", "admin", UserRole.Admin);
 
         while (true)
         {
@@ -371,15 +373,17 @@ class Program
             }
             else if (choice == "2")
             {
-                // Create a new user (this is for testing purposes, in real scenarios, registration might be handled separately)
-                Console.WriteLine("Enter New Username:");
-                string newUsername = Console.ReadLine();
-                Console.WriteLine("Enter New Password:");
-                string newPassword = Console.ReadLine();
-                Console.WriteLine("Enter Role (1 for Regular, 2 for Admin):");
-                string roleChoice = Console.ReadLine();
+                // Yeni Hesap Oluştur
 
+                Console.Write("Enter New Username: ");
+                string newUsername = Console.ReadLine();
+                Console.Write("Enter New Password: ");
+                string newPassword = Console.ReadLine();
+
+                Console.Write("Role: ");
+                string roleChoice = Console.ReadLine();
                 UserRole role = roleChoice == "2" ? UserRole.Admin : UserRole.Customer;
+
                 stockExchange.CreateUser(newUsername, newPassword, role);
 
                 Console.WriteLine("New user created successfully!");
