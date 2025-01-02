@@ -1,3 +1,3 @@
-Nesneye Yönelik Programlama Projesi - Konsol Tabanlı Borsa Simulasyonu
+Nesneye Yönelik Programlama Projesi - Konsol Tabanlı Borsa Uygulaması
 
-Decimal veri tipi virgülden sonraki sayıları en doğru saklayandır
+notlar
