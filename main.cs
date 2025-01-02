@@ -1,396 +1,653 @@
-public enum UserRole
+using System.Security.Principal;
+using System.Text.Json;
+
+// Data Handler
+public static class SaveFileSystem
+{
+    public static T DeserializeJSON<T>(string filePath)
+    {
+        if (File.Exists(filePath))
+        {
+            string json = File.ReadAllText(filePath);
+            return JsonSerializer.Deserialize<T>(json);
+        }
+
+        return default;
+    }
+
+    public static void SerializeJSON(string filePath, object data)
+    {
+        string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(filePath, json);
+    }
+}
+
+// Account Access Level Enum
+public enum AccountAccessLevel
 {
     Customer,
     Admin
 }
 
-public class User
+// Account Class
+public class Account
 {
-    public string Username { get; private set; }
-    public decimal Balance { get; private set; }
-    public UserRole Role { get; private set; }
+    // Static
+    private static string HashPassword(string password) => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(password));
 
-    private string _password;
-    private List<StockHolding> _portfolio;
+    // Data
+    public AccountAccessLevel AccessLevel { get; set; }
+    public string Username { get; set; }
+    public decimal Balance { get; set; }
+    public string Password { get; set; }
+    public Dictionary<string, decimal> Portfolio { get; set; } = new();
 
-    public User(string username, string password, decimal initialBalance = 1000, UserRole role = UserRole.Customer)
+    public bool IsAdmin() => AccessLevel == AccountAccessLevel.Admin;
+
+    // Password
+    public void SetPassword(string password)
     {
-        Username = username;
-        Balance = initialBalance;
-        Role = role;
-
-        _password = password;
-        _portfolio = new List<StockHolding>();
+        Password = HashPassword(password);
     }
 
-    public bool ValidatePassword(string password)
+    public bool VerifyPassword(string password)
     {
-        return password == _password;
+        return Password == HashPassword(password);
     }
 
-    public bool IsAdmin() => Role == UserRole.Admin;
-
-    public bool BuyStock(Stock stock, int quantity)
+    // Portfolio
+    public void AddToPortfolio(string stockSymbol, decimal amount)
     {
-        decimal cost = stock.Price * quantity;
-        if (Balance >= cost)
+        if (Portfolio.ContainsKey(stockSymbol))
+            Portfolio[stockSymbol] += amount;
+        else
+            Portfolio[stockSymbol] = amount;
+    }
+
+    public bool RemoveFromPortfolio(string stockSymbol, decimal amount)
+    {
+        if (Portfolio.TryGetValue(stockSymbol, out decimal currentAmount) && currentAmount >= amount)
         {
-            Balance -= cost;
-            AddToPortfolio(stock, quantity);
+            Portfolio[stockSymbol] -= amount;
+
+            if (Portfolio[stockSymbol] == 0)
+                Portfolio.Remove(stockSymbol);
+            return true;
+        }
+
+        return false;
+    }
+}
+
+// Stock Exchange System
+public class StockExchangeSystem
+{
+    // Data Management
+    private List<Account> Accounts { get; set; } = new();
+    private Dictionary<string, decimal> Stocks { get; set; } = new();
+
+    public StockExchangeSystem()
+    {
+        // Default Admin Account
+        var adminAccount = new Account
+        {
+            Username = "admin",
+            Balance = 0,
+            AccessLevel = AccountAccessLevel.Admin,
+        };
+
+        adminAccount.SetPassword("admin");
+
+        Accounts.Add(adminAccount);
+
+        // Load Data
+        var LoadedAccounts = SaveFileSystem.DeserializeJSON<List<Account>>("accounts.json");
+
+        if (LoadedAccounts != null && LoadedAccounts.Count > 0)
+        {
+            Accounts = LoadedAccounts;
+            Console.WriteLine($"{LoadedAccounts.Count} Accounts loaded successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Account data not found, creating new.");
+        }
+
+        var LoadedStocks = SaveFileSystem.DeserializeJSON<Dictionary<string, decimal>>("stocks.json");
+
+        if (LoadedStocks != null && LoadedStocks.Count > 0)
+        {
+            Stocks = LoadedStocks;
+            Console.WriteLine($"{LoadedStocks.Count} Stocks loaded successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Stock data not found, creating new.");
+        }
+
+        Thread.Sleep(3000);
+        Console.Clear();
+    }
+
+    public void SaveData()
+    {
+        SaveFileSystem.SerializeJSON("accounts.json", Accounts);
+        SaveFileSystem.SerializeJSON("stocks.json", Stocks);
+    }
+
+    // Account Management
+    public Account GetAccountFromUsername(string username)
+    {
+        return Accounts.FirstOrDefault(account => account.Username.Equals(username.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase));
+    }
+
+    public void AddAccount(string username, string password, decimal balance, AccountAccessLevel accessLevel)
+    {
+        var newAccount = new Account
+        {
+            Username = username,
+            Balance = balance,
+            AccessLevel = accessLevel
+        };
+
+        newAccount.SetPassword(password);
+        Accounts.Add(newAccount);
+        SaveData();
+    }
+
+    public void EditAccount(Account account, string newPassword, decimal newBalance)
+    {
+        account.SetPassword(newPassword);
+        account.Balance = newBalance;
+        SaveData();
+    }
+
+    public bool DeleteAccountPrompt(Account account)
+    {
+        if (account.AccessLevel == AccountAccessLevel.Admin)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Administrator accounts cannot be deleted.");
+            Console.ForegroundColor = ConsoleColor.White;
+
+            return false;
+        }
+
+        Console.Write("Write \"Y\" to confirm: ");
+        string response = Console.ReadLine() ?? "";
+
+        if (response.ToLowerInvariant() == "y")
+        {
+            Accounts.Remove(account);
+            Console.WriteLine("Account deleted.");
+            SaveData();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public void Login(string username, string password)
+    {
+        var account = GetAccountFromUsername(username);
+
+        if (account != null && account.VerifyPassword(password))
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"\nWelcome, {account.Username}!\n");
+            Console.ForegroundColor = ConsoleColor.White;
+
+            if (account.IsAdmin())
+            {
+                MenuSystem.AdminMenu(this);
+            }
+            else
+            {
+                MenuSystem.CustomerMenu(this, account);
+            }
+        }
+        else
+        {
+            Console.WriteLine("Invalid username or password.\n");
+        }
+    }
+
+    public void ListUsers()
+    {
+        Console.WriteLine("Users List:");
+
+        foreach (var account in Accounts)
+        {
+            Console.WriteLine($"- Username: {account.Username}, Balance: {account.Balance:C}, Type: {account.AccessLevel}");
+        }
+    }
+
+    // Stock Management
+    public void EditStock(string symbol, decimal price)
+    {
+        Stocks[symbol.ToUpperInvariant()] = price;
+        SaveData();
+    }
+
+    public bool RemoveStock(string symbol)
+    {
+        if (Stocks.Remove(symbol.ToUpperInvariant()))
+        {
+            SaveData();
             return true;
         }
         return false;
     }
 
-    public bool SellStock(Stock stock, int quantity)
+    public void ListStocks()
     {
-        var holding = _portfolio.FirstOrDefault(item => item.SymbolIndex == stock.Symbol);
-        if (holding != null && holding.Quantity >= quantity)
+        if (Stocks.Count == 0)
         {
-            holding.Quantity -= quantity;
-            decimal revenue = stock.Price * quantity;
-            Balance += revenue;
-            return true;
+            Console.WriteLine("No stocks available.");
+            return;
         }
-        return false;
-    }
 
-    private void AddToPortfolio(Stock stock, int quantity)
-    {
-        var existingHolding = _portfolio.FirstOrDefault(item => item.SymbolIndex == stock.Symbol);
-        if (existingHolding != null)
+        foreach (var stock in Stocks)
         {
-            existingHolding.Quantity += quantity;
-        }
-        else
-        {
-            _portfolio.Add(new StockHolding(stock.Symbol, quantity));
+            Console.WriteLine($"Stock: {stock.Key}, Price: {stock.Value:C}");
         }
     }
 
-    public List<StockHolding> GetPortfolio() => _portfolio;
-    public override string ToString() => $"{Username} (Role: {Role}, Balance: {Balance})";
-}
-
-public class StockHolding
-{
-    public string SymbolIndex { get; }
-    public int Quantity { get; set; }
-
-    public StockHolding(string symbol, int quantity)
+    // Customer Methods
+    public void BuyStock(Account account, string symbol, decimal amount)
     {
-        SymbolIndex = symbol;
-        Quantity = quantity;
-    }
+        symbol = symbol.ToUpperInvariant();
 
-    public decimal GetTotalValue(Stock stock) => stock.Price * Quantity;
-}
-
-public class Stock
-{
-    public string Symbol { get; set; }
-    public string Name { get; set; }
-    public decimal Price { get; set; }
-
-    public Stock(string symbol, string name, decimal price)
-    {
-        Symbol = symbol;
-        Name = name;
-        Price = price;
-    }
-}
-
-public class StockExchange
-{
-    public List<User> Users { get; private set; }
-    public List<Stock> Stocks { get; private set; }
-
-    public StockExchange()
-    {
-        Users = new List<User>();
-        Stocks = new List<Stock>();
-    }
-
-    // Create a new user and add them to the system
-    public void CreateUser(string username, string password, UserRole role = UserRole.Customer)
-    {
-        User newUser = new User(username, password, role: role);
-        Users.Add(newUser);
-    }
-
-    // Login: find user by username and validate the password
-    public User Login(string username, string password)
-    {
-        User user = Users.FirstOrDefault(u => u.Username == username);
-        if (user != null && user.ValidatePassword(password))
+        if (Stocks.TryGetValue(symbol, out decimal price))
         {
-            return user;
-        }
-        return null;
-    }
+            decimal totalCost = price * amount;
+            if (account.Balance >= totalCost)
+            {
+                account.Balance -= totalCost;
+                account.AddToPortfolio(symbol, amount);
+                SaveData();
 
-    // Add stock to exchange
-    public void AddStock(Stock stock)
-    {
-        Stocks.Add(stock);
-    }
-
-    // Remove stock from exchange
-    public void RemoveStock(string symbol)
-    {
-        var stock = Stocks.FirstOrDefault(s => s.Symbol == symbol);
-        if (stock != null)
-        {
-            Stocks.Remove(stock);
-        }
-    }
-
-    // Edit stock price
-    public void EditStockPrice(string symbol, decimal newPrice)
-    {
-        var stock = Stocks.FirstOrDefault(s => s.Symbol == symbol);
-        if (stock != null)
-        {
-            stock.Price = newPrice;
-        }
-    }
-}
-
-class Program
-{
-    // Admin Menu
-    static void AdminMenu(StockExchange stockExchange)
-    {
-        Console.WriteLine("Admin Menu:");
-        Console.WriteLine("1. Add Stock");
-        Console.WriteLine("2. Remove Stock");
-        Console.WriteLine("3. Edit Stock Price");
-        Console.WriteLine("4. View All Users");
-        Console.WriteLine("5. Logout");
-
-        string adminChoice = Console.ReadLine();
-
-        switch (adminChoice)
-        {
-            case "1":
-                AddStock(stockExchange);
-                break;
-            case "2":
-                RemoveStock(stockExchange);
-                break;
-            case "3":
-                EditStockPrice(stockExchange);
-                break;
-            case "4":
-                ViewAllUsers(stockExchange);
-                break;
-            case "5":
-                Console.WriteLine("Logging out...");
-                break;
-            default:
-                Console.WriteLine("Invalid choice.");
-                break;
-        }
-    }
-
-    static void AddStock(StockExchange stockExchange)
-    {
-        Console.WriteLine("Enter Stock Symbol:");
-        string symbol = Console.ReadLine();
-        Console.WriteLine("Enter Stock Name:");
-        string name = Console.ReadLine();
-        Console.WriteLine("Enter Stock Price:");
-        decimal price = Convert.ToDecimal(Console.ReadLine());
-
-        stockExchange.AddStock(new Stock(symbol, name, price));
-        Console.WriteLine("Stock added successfully.");
-    }
-
-    static void RemoveStock(StockExchange stockExchange)
-    {
-        Console.WriteLine("Enter Stock Symbol to Remove:");
-        string symbol = Console.ReadLine();
-
-        stockExchange.RemoveStock(symbol);
-        Console.WriteLine("Stock removed successfully.");
-    }
-
-    static void EditStockPrice(StockExchange stockExchange)
-    {
-        Console.WriteLine("Enter Stock Symbol to Edit:");
-        string symbol = Console.ReadLine();
-        Console.WriteLine("Enter New Stock Price:");
-        decimal newPrice = Convert.ToDecimal(Console.ReadLine());
-
-        stockExchange.EditStockPrice(symbol, newPrice);
-        Console.WriteLine("Stock price updated successfully.");
-    }
-
-    static void ViewAllUsers(StockExchange stockExchange)
-    {
-        Console.Clear();
-        Console.WriteLine("List of All Users:");
-        foreach (var user in stockExchange.Users)
-        {
-            Console.WriteLine(user);  // This will use the ToString() method to display the user info
-        }
-    }
-
-    // User Menu
-    static void UserMenu(User user, StockExchange stockExchange)
-    {
-        Console.WriteLine("User Menu:");
-        Console.WriteLine("1. Buy Stock");
-        Console.WriteLine("2. Sell Stock");
-        Console.WriteLine("3. View Portfolio");
-        Console.WriteLine("4. View Balance");
-        Console.WriteLine("5. Logout");
-
-        string userChoice = Console.ReadLine();
-
-        switch (userChoice)
-        {
-            case "1":
-                BuyStock(user, stockExchange);
-                break;
-            case "2":
-                SellStock(user, stockExchange);
-                break;
-            case "3":
-                ViewPortfolio(user);
-                break;
-            case "4":
-                ViewBalance(user);
-                break;
-            case "5":
-                Console.WriteLine("Logging out...");
-                break;
-            default:
-                Console.WriteLine("Invalid choice.");
-                break;
-        }
-    }
-
-    static void BuyStock(User user, StockExchange stockExchange)
-    {
-        Console.Clear();
-        Console.WriteLine("Enter Stock Symbol to Buy:");
-        string symbol = Console.ReadLine();
-        Console.WriteLine("Enter Number of Shares:");
-        int quantity = Convert.ToInt32(Console.ReadLine());
-
-        var stock = stockExchange.Stocks.FirstOrDefault(s => s.Symbol == symbol);
-        if (stock != null && user.BuyStock(stock, quantity))
-        {
-            Console.WriteLine($"Successfully bought {quantity} shares of {stock.Symbol}.");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"Bought {amount} units of {symbol}.");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Insufficient balance.");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
         }
         else
         {
-            Console.WriteLine("Not enough balance or stock not found.");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Stock not found.");
+            Console.ForegroundColor = ConsoleColor.White;
         }
     }
 
-    static void SellStock(User user, StockExchange stockExchange)
+    public void SellStock(Account account, string symbol, decimal amount)
     {
-        Console.Clear();
-        Console.WriteLine("Enter Stock Symbol to Sell:");
-        string symbol = Console.ReadLine();
-        Console.WriteLine("Enter Number of Shares:");
-        int quantity = Convert.ToInt32(Console.ReadLine());
+        symbol = symbol.ToUpperInvariant();
 
-        var stock = stockExchange.Stocks.FirstOrDefault(s => s.Symbol == symbol);
-        if (stock != null && user.SellStock(stock, quantity))
+        if (Stocks.TryGetValue(symbol, out decimal price))
         {
-            Console.WriteLine($"Successfully sold {quantity} shares of {stock.Symbol}.");
+            if (account.RemoveFromPortfolio(symbol, amount))
+            {
+                decimal totalRevenue = price * amount;
+                account.Balance += totalRevenue;
+                SaveData();
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"Sold {amount} units of {symbol}.");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Not enough stock to sell.");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
         }
         else
         {
-            Console.WriteLine("Not enough shares or stock not found.");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Stock not found.");
+            Console.ForegroundColor = ConsoleColor.White;
         }
     }
 
-    static void ViewPortfolio(User user)
+    public void ViewPortfolio(Account account)
     {
-        Console.Clear();
-        Console.WriteLine("Your Portfolio:");
-        foreach (var holding in user.GetPortfolio())
+        Console.Write("Your portfolio:\n");
+
+        if (account.Portfolio.Count == 0)
         {
-            Console.WriteLine($"Stock: {holding.SymbolIndex}, Quantity: {holding.Quantity}");
+            Console.Write("- You have no stocks.\n");
+        }
+        else
+        {
+            decimal totalValue = account.Balance;
+
+            foreach (var stock in account.Portfolio)
+            {
+                decimal valuation = (Stocks[stock.Key] * stock.Value);
+                totalValue += valuation;
+
+                Console.Write($"- {stock.Key}: {stock.Value} Units ( {valuation:C} )\n");
+            }
+
+            Console.Write($"\nAccount Balance: {account.Balance:C}");
+
+            Console.Write($"\nTotal: {totalValue:C}\n");
         }
     }
+}
 
-    static void ViewBalance(User user)
+// Auxiliary Systems
+public static class SafeFormatSystem
+{
+    public static string ValidateNewUsername(StockExchangeSystem system, string message)
     {
-        Console.WriteLine($"Your current balance: ${user.Balance}");
-    }
-
-    static void Main(string[] args)
-    {
-        StockExchange stockExchange = new StockExchange();
-
-        // Örnek Stoklar Ekle
-        stockExchange.AddStock(new Stock("AAPL", "Apple Inc.", 150.00m));
-        stockExchange.AddStock(new Stock("TSLA", "Tesla Inc.", 300.00m));
-
-        // Yönetici Hesabı Oluştur
-        stockExchange.CreateUser("admin", "admin", UserRole.Admin);
-
         while (true)
         {
-            Console.WriteLine("Welcome to the Stock Exchange!");
-            Console.WriteLine("1. Login");
-            Console.WriteLine("2. Create New User");
-            Console.WriteLine("3. Exit");
+            Console.Write(message);
 
-            string choice = Console.ReadLine();
+            string input = Console.ReadLine().ToLowerInvariant();
 
-            if (choice == "1")
+            if (system.GetAccountFromUsername(input) != null)
             {
-                Console.WriteLine("Enter Username:");
-                string username = Console.ReadLine();
-                Console.WriteLine("Enter Password:");
-                string password = Console.ReadLine();
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("This username is taken. Please try again.");
+                Console.ForegroundColor = ConsoleColor.White;
+                continue;
+            }
 
-                User loggedInUser = stockExchange.Login(username, password);
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Username cannot contain whitespace. Please try again.", input);
+                Console.ForegroundColor = ConsoleColor.White;
+                continue;
+            }
 
-                if (loggedInUser != null)
+            if (input.Length < 3 || input.Length > 20)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Username length must be within 3 and 20. Please try again.");
+                Console.ForegroundColor = ConsoleColor.White;
+                continue;
+            }
+
+            bool alphanumeric = true;
+
+            foreach (char c in input)
+            {
+                if (!char.IsLetterOrDigit(c))
                 {
-                    Console.WriteLine($"Welcome {loggedInUser.Username}!");
+                    alphanumeric = false;
+                    break;
+                }
+            }
 
-                    if (loggedInUser.IsAdmin())
-                    {
-                        AdminMenu(stockExchange);  // Show admin menu
-                    }
-                    else
-                    {
-                        UserMenu(loggedInUser, stockExchange);  // Show user menu
-                    }
+            if (!alphanumeric)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Username must be alphanumeric. Please try again.");
+                Console.ForegroundColor = ConsoleColor.White;
+                continue;
+            }
+
+            return input;
+        }
+    }
+
+    public static decimal NewDecimal(string message)
+    {
+        while (true)
+        {
+            Console.Write(message);
+
+            string input = Console.ReadLine();
+
+            if (decimal.TryParse(input, out decimal result))
+            {
+                if (result >= 0)
+                {
+                    return result;
                 }
                 else
                 {
-                    Console.WriteLine("Invalid username or password.");
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Decimal value cannot be negative. Please try again.");
+                    Console.ForegroundColor = ConsoleColor.White;
                 }
             }
-            else if (choice == "2")
+            else
             {
-                // Yeni Hesap Oluştur
-
-                Console.Write("Enter New Username: ");
-                string newUsername = Console.ReadLine();
-                Console.Write("Enter New Password: ");
-                string newPassword = Console.ReadLine();
-
-                Console.Write("Role: ");
-                string roleChoice = Console.ReadLine();
-                UserRole role = roleChoice == "2" ? UserRole.Admin : UserRole.Customer;
-
-                stockExchange.CreateUser(newUsername, newPassword, role);
-
-                Console.WriteLine("New user created successfully!");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Invalid decimal format. Please try again.");
+                Console.ForegroundColor = ConsoleColor.White;
             }
-            else if (choice == "3")
+        }
+    }
+}
+
+public static class MenuSystem
+{
+    public static void AdminMenu(StockExchangeSystem system)
+    {
+        while (true)
+        {
+            Console.Write("\n[ Admin Menu ]:\n\n1. Edit Stocks\n2. Remove Stock\n3. List Stocks\n4. Edit User\n5. Remove User\n6. List Users\n7. Logout\n\nChoose an option: ");
+
+            string choice = Console.ReadLine();
+
+            Console.Clear();
+
+            switch (choice)
             {
-                break;
+                case "1":
+                    Console.Write("Stock Symbol To Edit: ");
+                    string stockSymbol = Console.ReadLine();
+
+                    Console.Write("New Stock Price: ");
+                    if (decimal.TryParse(Console.ReadLine(), out decimal newPrice))
+                    {
+                        system.EditStock(stockSymbol, newPrice);
+                        Console.WriteLine("Stock edited successfully!");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid price format.");
+                    }
+                    break;
+
+                case "2":
+                    Console.Write("Stock Symbol To Remove: ");
+                    string stockSymbolToRemove = Console.ReadLine();
+                    system.RemoveStock(stockSymbolToRemove);
+                    Console.WriteLine("Stock removed successfully!");
+                    break;
+
+                case "3":
+                    system.ListStocks();
+                    break;
+
+                case "4":
+                    {
+                        Console.Write("\nUsername To Edit: ");
+                        Account account = system.GetAccountFromUsername(Console.ReadLine());
+
+                        if (account != null)
+                        {
+                            Console.Write("\nNew Password: ");
+                            string newPassword = Console.ReadLine();
+
+                            decimal newBalance = SafeFormatSystem.NewDecimal("\nNew Balance: ");
+
+                            system.EditAccount(account, newPassword, newBalance);
+
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.Write("\nAccount created successfully!\n");
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
+                        else
+                        {
+                            Console.WriteLine("User not found.");
+                        }
+                        break;
+                    }
+
+                case "5":
+                    {
+                        Console.Write("Username To Delete: ");
+                        Account account = system.GetAccountFromUsername(Console.ReadLine());
+
+                        if (account != null)
+                        {
+                            system.DeleteAccountPrompt(account);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Account not found.");
+                        }
+                        break;
+                    }
+
+                case "6":
+                    system.ListUsers();
+                    break;
+
+                case "7":
+                    return;
+
+                default:
+                    Console.WriteLine("Invalid option.");
+                    break;
+            }
+        }
+    }
+
+    public static void CustomerMenu(StockExchangeSystem system, Account account)
+    {
+        while (true)
+        {
+            Console.Write("\n[ Customer Menu ]:\n\n1. Buy Stock\n2. Sell Stock\n3. List Stocks\n4. View Portfolio\n5. Logout\n6. Delete Account\n\nChoose an option: ");
+
+            string choice = Console.ReadLine();
+
+            Console.Clear();
+
+            switch (choice)
+            {
+                case "1":
+                    {
+                        Console.Write("Stock Symbol: ");
+                        string symbol = Console.ReadLine();
+
+                        decimal amount = SafeFormatSystem.NewDecimal("Amount: ");
+
+                        system.BuyStock(account, symbol, amount);
+                        break;
+                    }
+
+                case "2":
+                    {
+                        Console.Write("Stock Symbol: ");
+                        string symbol = Console.ReadLine();
+
+                        decimal amount = SafeFormatSystem.NewDecimal("Amount: ");
+
+                        system.SellStock(account, symbol, amount);
+                        break;
+                    }
+
+                case "3":
+                    system.ListStocks();
+                    break;
+
+                case "4":
+                    system.ViewPortfolio(account);
+                    break;
+
+                case "5":
+                    return;
+
+                case "6":
+                    if (system.DeleteAccountPrompt(account))
+                    {
+                        return; // Log Out
+                    }
+                    else
+                    {
+                        break;
+                    }
+
+                default:
+                    Console.WriteLine("Invalid option.");
+                    break;
+            }
+        }
+    }
+}
+
+// Main Program
+public class Program
+{
+    static void Main(string[] args)
+    {
+        StockExchangeSystem system = new StockExchangeSystem();
+
+        while (true)
+        {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Welcome to the ");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write("Stock Exchange System\n\n");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("[ Main Menu ]\n\n1. Login\n2. Sign Up\n3. Exit\n\nChoose an option: ");
+
+            string choice = Console.ReadLine();
+            Console.Clear();
+
+            switch (choice)
+            {
+                case "1": // Login
+                    Console.Write("\nUsername: ");
+                    string username = Console.ReadLine();
+
+                    Console.Write("\nPassword: ");
+                    string password = Console.ReadLine();
+
+                    system.Login(username, password);
+                    break;
+
+                case "2": // Sign Up
+                    string newUsername = SafeFormatSystem.ValidateNewUsername(system, "\nUsername: ");
+
+                    Console.Write("\nPassword: ");
+                    string newPassword = Console.ReadLine();
+
+                    decimal newBalance = SafeFormatSystem.NewDecimal("\nBalance: ");
+
+                    system.AddAccount(newUsername, newPassword, newBalance, AccountAccessLevel.Customer);
+
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.Write("\nAccount created successfully!\n");
+                    Console.ForegroundColor = ConsoleColor.White;
+
+                    system.Login(newUsername, newPassword);
+                    break;
+
+                case "3": // Exit
+                    Console.WriteLine("Exiting...\n");
+                    return;
+
+                default:
+                    Console.WriteLine("Invalid option.\n");
+                    break;
             }
         }
     }
