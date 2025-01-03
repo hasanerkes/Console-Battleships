@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-// Data Handler
+// Kayıt Sistemi
 public static class SaveFileSystem
 {
     public static T DeserializeJSON<T>(string filePath)
@@ -21,29 +21,29 @@ public static class SaveFileSystem
     }
 }
 
-// Account Access Level Enum
+// Erişim Seviyesi Enum
 public enum AccountAccessLevel
 {
-    Customer,
-    Admin
+    Müşteri,
+    Yönetici
 }
 
-// Account Class
+// Hesap Sınıfı
 public class Account
 {
-    // Static
+    // Sabit
     private static string HashPassword(string password) => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(password));
 
-    // Data
+    // Hesap Verisi
     public AccountAccessLevel AccessLevel { get; set; }
     public string Username { get; set; }
-    public decimal Balance { get; set; }
     public string Password { get; set; }
+    public decimal Balance { get; set; }
     public Dictionary<string, decimal> Portfolio { get; set; } = new();
 
-    public bool IsAdmin() => AccessLevel == AccountAccessLevel.Admin;
+    public bool IsAdmin() => AccessLevel == AccountAccessLevel.Yönetici;
 
-    // Password
+    // Hesap Metodları
     public void SetPassword(string password)
     {
         Password = HashPassword(password);
@@ -54,62 +54,82 @@ public class Account
         return Password == HashPassword(password);
     }
 
-    // Portfolio
-    public void AddToPortfolio(string stockSymbol, decimal amount)
+    public bool EditBalance(decimal amount)
     {
-        if (Portfolio.ContainsKey(stockSymbol))
-            Portfolio[stockSymbol] += amount;
+        decimal newBalance = Balance + amount;
+
+        if (newBalance < 0)
+        {
+            return false; // Bakiye Eksiye Düşemez
+        }
         else
-            Portfolio[stockSymbol] = amount;
+        {
+            Balance = newBalance;
+
+            return true; // Bakiye Güncellendi
+        }
     }
 
-    public bool RemoveFromPortfolio(string stockSymbol, decimal amount)
+    public bool EditPortfolio(string stockSymbol, decimal amount)
     {
-        if (Portfolio.TryGetValue(stockSymbol, out decimal currentAmount) && currentAmount >= amount)
+        if (amount > 0)
         {
-            Portfolio[stockSymbol] -= amount;
+            if (Portfolio.ContainsKey(stockSymbol))
+                Portfolio[stockSymbol] += amount;
+            else
+                Portfolio[stockSymbol] = amount;
 
-            if (Portfolio[stockSymbol] == 0)
-                Portfolio.Remove(stockSymbol);
-            return true;
+            return true; // Hisse Eklendi
         }
+        else
+        {
+            if (Portfolio.TryGetValue(stockSymbol, out decimal currentAmount) && currentAmount >= amount)
+            {
+                Portfolio[stockSymbol] -= amount;
 
-        return false;
+                if (Portfolio[stockSymbol] == 0)
+                    Portfolio.Remove(stockSymbol);
+
+                return true; // Hisse Çıkartıldı
+            }
+
+            return false; // Hisse Yok
+        }
     }
 }
 
-// Stock Exchange System
+// Borsa Sistemi
 public class StockExchangeSystem
 {
-    // Data Management
+    // Veri Yönetimi
     private List<Account> Accounts { get; set; } = new();
     private Dictionary<string, decimal> Stocks { get; set; } = new();
 
     public StockExchangeSystem()
     {
-        // Default Admin Account
+        // Varsayılan Yönetici Hesabı
         var adminAccount = new Account
         {
             Username = "admin",
             Balance = 0,
-            AccessLevel = AccountAccessLevel.Admin,
+            AccessLevel = AccountAccessLevel.Yönetici,
         };
 
         adminAccount.SetPassword("admin");
 
         Accounts.Add(adminAccount);
 
-        // Load Data
+        // Verileri Yükle
         var LoadedAccounts = SaveFileSystem.DeserializeJSON<List<Account>>("accounts.json");
 
         if (LoadedAccounts != null && LoadedAccounts.Count > 0)
         {
             Accounts = LoadedAccounts;
-            Console.WriteLine($"{LoadedAccounts.Count} Accounts loaded successfully.");
+            Console.Write($"\n{LoadedAccounts.Count} Hesap başarıyla yüklendi.");
         }
         else
         {
-            Console.WriteLine("Account data not found, creating new.");
+            Console.Write("\nKullanıcı kaydı bulunamadı, yenisi oluşturuluyor.");
         }
 
         var LoadedStocks = SaveFileSystem.DeserializeJSON<Dictionary<string, decimal>>("stocks.json");
@@ -117,11 +137,11 @@ public class StockExchangeSystem
         if (LoadedStocks != null && LoadedStocks.Count > 0)
         {
             Stocks = LoadedStocks;
-            Console.WriteLine($"{LoadedStocks.Count} Stocks loaded successfully.");
+            Console.Write($"\n{LoadedStocks.Count} Hisse başarıyla yüklendi.");
         }
         else
         {
-            Console.WriteLine("Stock data not found, creating new.");
+            Console.Write("\nHisse kaydı bulunamadı, yenisi oluşturuluyor.");
         }
 
         Thread.Sleep(3000);
@@ -134,19 +154,19 @@ public class StockExchangeSystem
         SaveFileSystem.SerializeJSON("stocks.json", Stocks);
     }
 
-    // Account Management
+    // Hesap Yönetimi
     public Account GetAccountFromUsername(string username)
     {
         return Accounts.FirstOrDefault(account => account.Username.Equals(username.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase));
     }
 
-    public void AddAccount(string username, string password, decimal balance, AccountAccessLevel accessLevel)
+    public void AddAccount(string username, string password, AccountAccessLevel accessLevel)
     {
         var newAccount = new Account
         {
+            AccessLevel = accessLevel,
             Username = username,
-            Balance = balance,
-            AccessLevel = accessLevel
+            Balance = 0
         };
 
         newAccount.SetPassword(password);
@@ -154,31 +174,24 @@ public class StockExchangeSystem
         SaveData();
     }
 
-    public void EditAccount(Account account, string newPassword, decimal newBalance)
-    {
-        account.SetPassword(newPassword);
-        account.Balance = newBalance;
-        SaveData();
-    }
-
     public bool DeleteAccountPrompt(Account account)
     {
-        if (account.AccessLevel == AccountAccessLevel.Admin)
+        if (account.AccessLevel == AccountAccessLevel.Yönetici)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("Administrator accounts cannot be deleted.");
+            Console.Write("\nYönetici hesapları silinemez.");
             Console.ForegroundColor = ConsoleColor.White;
 
             return false;
         }
 
-        Console.Write("Write \"Y\" to confirm: ");
+        Console.Write("\nOnaylamak için \"evet\" yazın: ");
         string response = Console.ReadLine() ?? "";
 
-        if (response.ToLowerInvariant() == "y")
+        if (response.ToLowerInvariant() == "evet")
         {
             Accounts.Remove(account);
-            Console.WriteLine("Account deleted.");
+            Console.Write("\nHesap başarıyla silindi.");
             SaveData();
 
             return true;
@@ -194,7 +207,7 @@ public class StockExchangeSystem
         if (account != null && account.VerifyPassword(password))
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"\nWelcome, {account.Username}!\n");
+            Console.Write($"\nMerhaba, {account.Username}!\n");
             Console.ForegroundColor = ConsoleColor.White;
 
             if (account.IsAdmin())
@@ -208,21 +221,21 @@ public class StockExchangeSystem
         }
         else
         {
-            Console.WriteLine("Invalid username or password.\n");
+            Console.Write("\nGeçersiz kullanıcı adı veya şifre.");
         }
     }
 
     public void ListUsers()
     {
-        Console.WriteLine("Users List:");
+        Console.Write("\nKullanıcı Listesi:\n");
 
         foreach (var account in Accounts)
         {
-            Console.WriteLine($"- Username: {account.Username}, Balance: {account.Balance:C}, Type: {account.AccessLevel}");
+            Console.Write($"\n- Kullanıcı Adı: {account.Username} | Bakiye: {account.Balance:C} | Tür: {account.AccessLevel}");
         }
     }
 
-    // Stock Management
+    // Hisse Yönetimi
     public void EditStock(string symbol, decimal price)
     {
         Stocks[symbol.ToUpperInvariant()] = price;
@@ -236,6 +249,7 @@ public class StockExchangeSystem
             SaveData();
             return true;
         }
+
         return false;
     }
 
@@ -243,17 +257,17 @@ public class StockExchangeSystem
     {
         if (Stocks.Count == 0)
         {
-            Console.WriteLine("No stocks available.");
+            Console.Write("\nMevcut hisse yok.");
             return;
         }
 
         foreach (var stock in Stocks)
         {
-            Console.WriteLine($"Stock: {stock.Key}, Price: {stock.Value:C}");
+            Console.Write($"\nHisse: {stock.Key} | Fiyat: {stock.Value:C}");
         }
     }
 
-    // Customer Methods
+    // Müşteri Metodları
     public void BuyStock(Account account, string symbol, decimal amount)
     {
         symbol = symbol.ToUpperInvariant();
@@ -261,27 +275,26 @@ public class StockExchangeSystem
         if (Stocks.TryGetValue(symbol, out decimal price))
         {
             decimal totalCost = price * amount;
-            if (account.Balance >= totalCost)
+
+            if (account.EditBalance(-totalCost))
             {
-                account.Balance -= totalCost;
-                account.AddToPortfolio(symbol, amount);
+                account.EditPortfolio(symbol, amount);
                 SaveData();
 
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"Bought {amount} units of {symbol}.");
+                Console.Write($"\n{amount} tane {symbol} hissesi satın alındı.");
                 Console.ForegroundColor = ConsoleColor.White;
-            }
-            else
+            } else
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Insufficient balance.");
+                Console.Write("\nYetersiz bakiye.");
                 Console.ForegroundColor = ConsoleColor.White;
             }
         }
         else
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("Stock not found.");
+            Console.Write("\nHisse bulunamadı.");
             Console.ForegroundColor = ConsoleColor.White;
         }
     }
@@ -292,38 +305,39 @@ public class StockExchangeSystem
 
         if (Stocks.TryGetValue(symbol, out decimal price))
         {
-            if (account.RemoveFromPortfolio(symbol, amount))
+            if (account.EditPortfolio(symbol, -amount))
             {
                 decimal totalRevenue = price * amount;
-                account.Balance += totalRevenue;
+
+                account.EditBalance(totalRevenue);
                 SaveData();
 
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"Sold {amount} units of {symbol}.");
+                Console.Write($"\n{amount} tane {symbol} hissesi satıldı.");
                 Console.ForegroundColor = ConsoleColor.White;
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Not enough stock to sell.");
+                Console.Write("\nYetersiz hisse miktarı.");
                 Console.ForegroundColor = ConsoleColor.White;
             }
         }
         else
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("Stock not found.");
+            Console.Write("\nHisse bulunamadı.");
             Console.ForegroundColor = ConsoleColor.White;
         }
     }
 
     public void ViewPortfolio(Account account)
     {
-        Console.Write("Your portfolio:\n");
+        Console.Write("\nYour portfolio:\n");
 
         if (account.Portfolio.Count == 0)
         {
-            Console.Write("- You have no stocks.\n");
+            Console.Write("\n- You have no stocks.");
         }
         else
         {
@@ -334,20 +348,20 @@ public class StockExchangeSystem
                 decimal valuation = (Stocks[stock.Key] * stock.Value);
                 totalValue += valuation;
 
-                Console.Write($"- {stock.Key}: {stock.Value} Units ( {valuation:C} )\n");
+                Console.Write($"\n- {stock.Key}: {stock.Value} ({valuation:C})");
             }
 
-            Console.Write($"\nAccount Balance: {account.Balance:C}");
+            Console.Write($"\n\nBakiye: {account.Balance:C}");
 
-            Console.Write($"\nTotal: {totalValue:C}\n");
+            Console.Write($"\n\nToplam: {totalValue:C}\n");
         }
     }
 }
 
-// Auxiliary Systems
+// Yardımcı Sistemler
 public static class SafeFormatSystem
 {
-    public static string ValidateNewUsername(StockExchangeSystem system, string message)
+    public static string NewUsername(StockExchangeSystem system, string message)
     {
         while (true)
         {
@@ -358,7 +372,7 @@ public static class SafeFormatSystem
             if (system.GetAccountFromUsername(input) != null)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("This username is taken. Please try again.");
+                Console.WriteLine("Kullanıcı adı zaten mevcut.");
                 Console.ForegroundColor = ConsoleColor.White;
                 continue;
             }
@@ -366,7 +380,7 @@ public static class SafeFormatSystem
             if (string.IsNullOrWhiteSpace(input))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Username cannot contain whitespace. Please try again.", input);
+                Console.WriteLine("Kullanıcı adında boşluk olamaz.", input);
                 Console.ForegroundColor = ConsoleColor.White;
                 continue;
             }
@@ -374,7 +388,7 @@ public static class SafeFormatSystem
             if (input.Length < 3 || input.Length > 20)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Username length must be within 3 and 20. Please try again.");
+                Console.WriteLine("Kullanıcı adı uzunluğu 3 ile 20 arasında olmalıdır.");
                 Console.ForegroundColor = ConsoleColor.White;
                 continue;
             }
@@ -393,7 +407,7 @@ public static class SafeFormatSystem
             if (!alphanumeric)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Username must be alphanumeric. Please try again.");
+                Console.WriteLine("Kullanıcı adı sadece alfanümerik harfler veya sayılardan oluşmalıdır.");
                 Console.ForegroundColor = ConsoleColor.White;
                 continue;
             }
@@ -404,32 +418,31 @@ public static class SafeFormatSystem
 
     public static decimal NewDecimal(string message)
     {
-        while (true)
+        Console.Write(message);
+
+        string input = Console.ReadLine();
+
+        if (decimal.TryParse(input, out decimal result))
         {
-            Console.Write(message);
-
-            string input = Console.ReadLine();
-
-            if (decimal.TryParse(input, out decimal result))
+            if (result >= 0)
             {
-                if (result >= 0)
-                {
-                    return result;
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Decimal value cannot be negative. Please try again.");
-                    Console.ForegroundColor = ConsoleColor.White;
-                }
+                return result;
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Invalid decimal format. Please try again.");
+                Console.Write("\nDecimal değeri negatif olamaz.");
                 Console.ForegroundColor = ConsoleColor.White;
             }
         }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Write("\nGeçersiz decimal formatı.");
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        return -1;
     }
 }
 
@@ -439,7 +452,7 @@ public static class MenuSystem
     {
         while (true)
         {
-            Console.Write("\n[ Admin Menu ]:\n\n1. Edit Stocks\n2. Remove Stock\n3. List Stocks\n4. Edit User\n5. Remove User\n6. List Users\n7. Logout\n\nChoose an option: ");
+            Console.Write("\n[ Yönetici Seçenekleri ]:\n\n1. Hisse Düzenle\n2. Hisse Kaldır\n3. Mevcut Hisseleri Listele\n4. Kullanıcı Kaldır\n5. Mevcut Kullanıcıları Listele\n6. Çıkış Yap\n\nSeçeneğiniz: ");
 
             string choice = Console.ReadLine();
 
@@ -448,26 +461,29 @@ public static class MenuSystem
             switch (choice)
             {
                 case "1":
-                    Console.Write("Stock Symbol To Edit: ");
+                    Console.Write("\nHisse Sembolü: ");
                     string stockSymbol = Console.ReadLine();
 
-                    Console.Write("New Stock Price: ");
-                    if (decimal.TryParse(Console.ReadLine(), out decimal newPrice))
+                    decimal newPrice = SafeFormatSystem.NewDecimal("Hisse Fiyatı: ");
+
+                    if (newPrice != -1)
                     {
                         system.EditStock(stockSymbol, newPrice);
-                        Console.WriteLine("Stock edited successfully!");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invalid price format.");
+                        Console.WriteLine("Hisse başarıyla düzenlendi.");
                     }
                     break;
 
                 case "2":
-                    Console.Write("Stock Symbol To Remove: ");
+                    Console.Write("\nSilinecek Hisse Sembolü: ");
                     string stockSymbolToRemove = Console.ReadLine();
-                    system.RemoveStock(stockSymbolToRemove);
-                    Console.WriteLine("Stock removed successfully!");
+
+                    if (system.RemoveStock(stockSymbolToRemove))
+                    {
+                        Console.Write("\nHisse başarıyla silindi.");
+                    } else
+                    {
+                        Console.Write("\nHisse bulunamadı.");
+                    }
                     break;
 
                 case "3":
@@ -476,32 +492,7 @@ public static class MenuSystem
 
                 case "4":
                     {
-                        Console.Write("\nUsername To Edit: ");
-                        Account account = system.GetAccountFromUsername(Console.ReadLine());
-
-                        if (account != null)
-                        {
-                            Console.Write("\nNew Password: ");
-                            string newPassword = Console.ReadLine();
-
-                            decimal newBalance = SafeFormatSystem.NewDecimal("\nNew Balance: ");
-
-                            system.EditAccount(account, newPassword, newBalance);
-
-                            Console.ForegroundColor = ConsoleColor.Green;
-                            Console.Write("\nAccount created successfully!\n");
-                            Console.ForegroundColor = ConsoleColor.White;
-                        }
-                        else
-                        {
-                            Console.WriteLine("User not found.");
-                        }
-                        break;
-                    }
-
-                case "5":
-                    {
-                        Console.Write("Username To Delete: ");
+                        Console.Write("\nSilinecek Kullanıcının Adı: ");
                         Account account = system.GetAccountFromUsername(Console.ReadLine());
 
                         if (account != null)
@@ -510,20 +501,20 @@ public static class MenuSystem
                         }
                         else
                         {
-                            Console.WriteLine("Account not found.");
+                            Console.WriteLine("Kullanıcı bulunamadı.");
                         }
                         break;
                     }
 
-                case "6":
+                case "5":
                     system.ListUsers();
                     break;
 
-                case "7":
+                case "6":
                     return;
 
                 default:
-                    Console.WriteLine("Invalid option.");
+                    Console.WriteLine("Geçersiz seçenek.");
                     break;
             }
         }
@@ -533,7 +524,7 @@ public static class MenuSystem
     {
         while (true)
         {
-            Console.Write("\n[ Customer Menu ]:\n\n1. Buy Stock\n2. Sell Stock\n3. List Stocks\n4. View Portfolio\n5. Logout\n6. Delete Account\n\nChoose an option: ");
+            Console.Write("\n[ Müşteri Seçenekleri ]:\n\n1. Hisse Satın Al\n2. Hisse Sat\n3. Mevcut Hisseleri Listele\n4. Bakiye Ekle\n5. Portföy Görüntüle\n6. Çıkış Yap\n7. Hesabı Sil\n\nSeçeneğiniz: ");
 
             string choice = Console.ReadLine();
 
@@ -541,43 +532,59 @@ public static class MenuSystem
 
             switch (choice)
             {
-                case "1":
+                case "1": // Hisse Satın Al
                     {
-                        Console.Write("Stock Symbol: ");
+                        Console.Write("Hisse Sembolü: ");
                         string symbol = Console.ReadLine();
 
-                        decimal amount = SafeFormatSystem.NewDecimal("Amount: ");
+                        decimal amount = SafeFormatSystem.NewDecimal("Miktar: ");
 
-                        system.BuyStock(account, symbol, amount);
+                        if (amount != -1)
+                        {
+                            system.BuyStock(account, symbol, amount);
+                        }
+
                         break;
                     }
 
-                case "2":
+                case "2": // Hisse Sat
                     {
-                        Console.Write("Stock Symbol: ");
+                        Console.Write("Hisse Sembolü: ");
                         string symbol = Console.ReadLine();
 
-                        decimal amount = SafeFormatSystem.NewDecimal("Amount: ");
+                        decimal amount = SafeFormatSystem.NewDecimal("Miktar: ");
 
                         system.SellStock(account, symbol, amount);
                         break;
                     }
 
-                case "3":
+                case "3": // Mevcut Hisseleri Listele
                     system.ListStocks();
                     break;
 
-                case "4":
+                case "4": // Bakiye Ekle
+                    {
+                        decimal amount = SafeFormatSystem.NewDecimal("Yüklemek İstediğiniz Tutar: ");
+                        account.EditBalance(amount);
+
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.Write($"\n{amount:C} yüklendi.");
+                        Console.ForegroundColor = ConsoleColor.White;
+
+                        break;
+                    }
+
+                case "5":
                     system.ViewPortfolio(account);
                     break;
 
-                case "5":
+                case "6":
                     return;
 
-                case "6":
+                case "7":
                     if (system.DeleteAccountPrompt(account))
                     {
-                        return; // Log Out
+                        return; // Çıkış Yap
                     }
                     else
                     {
@@ -585,14 +592,14 @@ public static class MenuSystem
                     }
 
                 default:
-                    Console.WriteLine("Invalid option.");
+                    Console.Write("\nGeçersiz seçenek.");
                     break;
             }
         }
     }
 }
 
-// Main Program
+// Ana Program
 public class Program
 {
     static void Main(string[] args)
@@ -601,51 +608,49 @@ public class Program
 
         while (true)
         {
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.Write("Welcome to the ");
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write("Stock Exchange System\n\n");
+            Console.Write("Hisse Senedi Borsa Sistemi\n\n");
             Console.ForegroundColor = ConsoleColor.White;
-            Console.Write("[ Main Menu ]\n\n1. Login\n2. Sign Up\n3. Exit\n\nChoose an option: ");
+            Console.Write("'ne Hoşgeldiniz");
+
+            Console.Write("[ Ana Menü ]\n\n1. Giriş Yap\n2. Kayıt Ol\n3. Çıkış Yap\n\nSeçeneğiniz: ");
 
             string choice = Console.ReadLine();
             Console.Clear();
 
             switch (choice)
             {
-                case "1": // Login
-                    Console.Write("\nUsername: ");
+                case "1": // Giriş Yap
+                    Console.Write("\nKullanıcı Adı: ");
                     string username = Console.ReadLine();
 
-                    Console.Write("\nPassword: ");
+                    Console.Write("\nŞifre: ");
                     string password = Console.ReadLine();
 
                     system.Login(username, password);
                     break;
+                    
+                case "2": // Kayıt Ol
+                    string newUsername = SafeFormatSystem.NewUsername(system, "\nKullanıcı Adı: ");
 
-                case "2": // Sign Up
-                    string newUsername = SafeFormatSystem.ValidateNewUsername(system, "\nUsername: ");
-
-                    Console.Write("\nPassword: ");
+                    Console.Write("\nŞifre: ");
                     string newPassword = Console.ReadLine();
 
-                    decimal newBalance = SafeFormatSystem.NewDecimal("\nBalance: ");
-
-                    system.AddAccount(newUsername, newPassword, newBalance, AccountAccessLevel.Customer);
+                    system.AddAccount(newUsername, newPassword, AccountAccessLevel.Müşteri);
 
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.Write("\nAccount created successfully!\n");
+                    Console.Write("\nHesap başarıyla oluşturuldu!");
                     Console.ForegroundColor = ConsoleColor.White;
 
                     system.Login(newUsername, newPassword);
                     break;
 
-                case "3": // Exit
-                    Console.WriteLine("Exiting...\n");
+                case "3": // Çıkış
+                    Console.Write("\nÇıkılıyor...\n\n\n");
                     return;
 
                 default:
-                    Console.WriteLine("Invalid option.\n");
+                    Console.Write("\nGeçersiz seçenek.");
                     break;
             }
         }
