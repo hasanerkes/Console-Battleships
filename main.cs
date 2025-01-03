@@ -104,7 +104,6 @@ public class StockExchangeSystem
     // Veri Yönetimi
     private List<Account> Accounts { get; set; } = new();
     private Dictionary<string, decimal> Stocks { get; set; } = new();
-
     public StockExchangeSystem()
     {
         // Varsayılan Yönetici Hesabı
@@ -207,7 +206,7 @@ public class StockExchangeSystem
         if (account != null && account.VerifyPassword(password))
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.Write($"\nMerhaba, {account.Username}!\n");
+            Console.Write($"\nMerhaba, {account.Username}!");
             Console.ForegroundColor = ConsoleColor.White;
 
             if (account.IsAdmin())
@@ -333,11 +332,11 @@ public class StockExchangeSystem
 
     public void ViewPortfolio(Account account)
     {
-        Console.Write("\nYour portfolio:\n");
+        Console.Write("\nPortföyünüz:\n");
 
         if (account.Portfolio.Count == 0)
         {
-            Console.Write("\n- You have no stocks.");
+            Console.Write("\n- Hiç hisseniz yok.");
         }
         else
         {
@@ -452,7 +451,7 @@ public static class MenuSystem
     {
         while (true)
         {
-            Console.Write("\n[ Yönetici Seçenekleri ]:\n\n1. Hisse Düzenle\n2. Hisse Kaldır\n3. Mevcut Hisseleri Listele\n4. Kullanıcı Kaldır\n5. Mevcut Kullanıcıları Listele\n6. Çıkış Yap\n\nSeçeneğiniz: ");
+            Console.Write("\n\n[ Yönetici Seçenekleri ]\n\n1. Hisse Düzenle\n2. Hisse Kaldır\n3. Mevcut Hisseleri Listele\n4. Kullanıcı Kaldır\n5. Mevcut Kullanıcıları Listele\n6. Çıkış Yap\n\nSeçeneğiniz: ");
 
             string choice = Console.ReadLine();
 
@@ -524,7 +523,7 @@ public static class MenuSystem
     {
         while (true)
         {
-            Console.Write("\n[ Müşteri Seçenekleri ]:\n\n1. Hisse Satın Al\n2. Hisse Sat\n3. Mevcut Hisseleri Listele\n4. Bakiye Ekle\n5. Portföy Görüntüle\n6. Çıkış Yap\n7. Hesabı Sil\n\nSeçeneğiniz: ");
+            Console.Write("\n\n[ Müşteri Seçenekleri ]\n\n1. Hisse Satın Al\n2. Hisse Sat\n3. Mevcut Hisseleri Listele\n4. Bakiye Ekle\n5. Portföy Görüntüle\n6. Çıkış Yap\n7. Hesabı Sil\n\nSeçeneğiniz: ");
 
             string choice = Console.ReadLine();
 
@@ -534,10 +533,10 @@ public static class MenuSystem
             {
                 case "1": // Hisse Satın Al
                     {
-                        Console.Write("Hisse Sembolü: ");
+                        Console.Write("\nHisse Sembolü: ");
                         string symbol = Console.ReadLine();
 
-                        decimal amount = SafeFormatSystem.NewDecimal("Miktar: ");
+                        decimal amount = SafeFormatSystem.NewDecimal("\nMiktar: ");
 
                         if (amount != -1)
                         {
@@ -549,12 +548,16 @@ public static class MenuSystem
 
                 case "2": // Hisse Sat
                     {
-                        Console.Write("Hisse Sembolü: ");
+                        Console.Write("\nHisse Sembolü: ");
                         string symbol = Console.ReadLine();
 
-                        decimal amount = SafeFormatSystem.NewDecimal("Miktar: ");
+                        decimal amount = SafeFormatSystem.NewDecimal("\nMiktar: ");
 
-                        system.SellStock(account, symbol, amount);
+                        if (amount != -1)
+                        {
+                            system.SellStock(account, symbol, amount);
+                        }
+
                         break;
                     }
 
@@ -564,12 +567,16 @@ public static class MenuSystem
 
                 case "4": // Bakiye Ekle
                     {
-                        decimal amount = SafeFormatSystem.NewDecimal("Yüklemek İstediğiniz Tutar: ");
-                        account.EditBalance(amount);
+                        decimal amount = SafeFormatSystem.NewDecimal("\nYüklemek İstediğiniz Tutar: ");
 
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.Write($"\n{amount:C} yüklendi.");
-                        Console.ForegroundColor = ConsoleColor.White;
+                        if (amount != -1)
+                        {
+                            account.EditBalance(amount);
+
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.Write($"\n{amount:C} yüklendi.");
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
 
                         break;
                     }
@@ -609,11 +616,11 @@ public class Program
         while (true)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write("Hisse Senedi Borsa Sistemi\n\n");
+            Console.Write("Hisse Senedi Borsa Sistemi");
             Console.ForegroundColor = ConsoleColor.White;
             Console.Write("'ne Hoşgeldiniz");
 
-            Console.Write("[ Ana Menü ]\n\n1. Giriş Yap\n2. Kayıt Ol\n3. Çıkış Yap\n\nSeçeneğiniz: ");
+            Console.Write("\n\n[ Ana Menü ]\n\n1. Giriş Yap\n2. Kayıt Ol\n3. Çıkış Yap\n\nSeçeneğiniz: ");
 
             string choice = Console.ReadLine();
             Console.Clear();
