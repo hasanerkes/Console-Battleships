@@ -334,14 +334,14 @@ public class StockExchangeSystem
     {
         Console.Write("\nPortföyünüz:\n");
 
+        decimal totalValue = account.Balance;
+
         if (account.Portfolio.Count == 0)
         {
             Console.Write("\n- Hiç hisseniz yok.");
         }
         else
         {
-            decimal totalValue = account.Balance;
-
             foreach (var stock in account.Portfolio)
             {
                 decimal valuation = (Stocks[stock.Key] * stock.Value);
@@ -349,11 +349,11 @@ public class StockExchangeSystem
 
                 Console.Write($"\n- {stock.Key}: {stock.Value} ({valuation:C})");
             }
-
-            Console.Write($"\n\nBakiye: {account.Balance:C}");
-
-            Console.Write($"\n\nToplam: {totalValue:C}\n");
         }
+
+        Console.Write($"\n\nBakiye: {account.Balance:C}");
+
+        Console.Write($"\n\nToplam: {totalValue:C}\n");
     }
 }
 
@@ -371,7 +371,7 @@ public static class SafeFormatSystem
             if (system.GetAccountFromUsername(input) != null)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Kullanıcı adı zaten mevcut.");
+                Console.Write("\nKullanıcı adı zaten mevcut.");
                 Console.ForegroundColor = ConsoleColor.White;
                 continue;
             }
@@ -379,7 +379,7 @@ public static class SafeFormatSystem
             if (string.IsNullOrWhiteSpace(input))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Kullanıcı adında boşluk olamaz.", input);
+                Console.Write("\nKullanıcı adında boşluk olamaz.", input);
                 Console.ForegroundColor = ConsoleColor.White;
                 continue;
             }
@@ -387,7 +387,7 @@ public static class SafeFormatSystem
             if (input.Length < 3 || input.Length > 20)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Kullanıcı adı uzunluğu 3 ile 20 arasında olmalıdır.");
+                Console.Write("\nKullanıcı adı uzunluğu 3 ile 20 arasında olmalıdır.");
                 Console.ForegroundColor = ConsoleColor.White;
                 continue;
             }
@@ -406,7 +406,7 @@ public static class SafeFormatSystem
             if (!alphanumeric)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Kullanıcı adı sadece alfanümerik harfler veya sayılardan oluşmalıdır.");
+                Console.Write("\nKullanıcı adı sadece alfanümerik harfler veya sayılardan oluşmalıdır.");
                 Console.ForegroundColor = ConsoleColor.White;
                 continue;
             }
@@ -468,7 +468,7 @@ public static class MenuSystem
                     if (newPrice != -1)
                     {
                         system.EditStock(stockSymbol, newPrice);
-                        Console.WriteLine("Hisse başarıyla düzenlendi.");
+                        Console.Write("\nHisse başarıyla düzenlendi.");
                     }
                     break;
 
@@ -500,7 +500,7 @@ public static class MenuSystem
                         }
                         else
                         {
-                            Console.WriteLine("Kullanıcı bulunamadı.");
+                            Console.Write("\nKullanıcı bulunamadı.");
                         }
                         break;
                     }
@@ -513,7 +513,7 @@ public static class MenuSystem
                     return;
 
                 default:
-                    Console.WriteLine("Geçersiz seçenek.");
+                    Console.Write("\nGeçersiz seçenek.");
                     break;
             }
         }
