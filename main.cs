@@ -192,7 +192,7 @@ public class StockExchangeSystem
         if (response.ToLowerInvariant() == "evet")
         {
             Accounts.Remove(account);
-            Console.Write("\nHesap başarıyla silindi.\n");
+            Console.Write("\nHesap başarıyla silindi.");
             SaveData();
 
             return true;
@@ -634,7 +634,7 @@ public class Program
         while (true)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write("Hisse Senedi Borsa Sistemi");
+            Console.Write("\n\nHisse Senedi Borsa Sistemi");
             Console.ForegroundColor = ConsoleColor.White;
             Console.Write("'ne Hoşgeldiniz");
 
