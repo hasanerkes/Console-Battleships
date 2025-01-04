@@ -83,6 +83,8 @@ public class Account
         }
         else
         {
+            amount = -amount;
+
             if (Portfolio.TryGetValue(stockSymbol, out decimal currentAmount) && currentAmount >= amount)
             {
                 Portfolio[stockSymbol] -= amount;
@@ -190,7 +192,7 @@ public class StockExchangeSystem
         if (response.ToLowerInvariant() == "evet")
         {
             Accounts.Remove(account);
-            Console.Write("\nHesap başarıyla silindi.");
+            Console.Write("\nHesap başarıyla silindi.\n");
             SaveData();
 
             return true;
@@ -283,7 +285,8 @@ public class StockExchangeSystem
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write($"\n{amount} tane {symbol} hissesi satın alındı.");
                 Console.ForegroundColor = ConsoleColor.White;
-            } else
+            }
+            else
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.Write("\nYetersiz bakiye.");
@@ -344,16 +347,24 @@ public class StockExchangeSystem
         {
             foreach (var stock in account.Portfolio)
             {
-                decimal valuation = (Stocks[stock.Key] * stock.Value);
-                totalValue += valuation;
 
-                Console.Write($"\n- {stock.Key}: {stock.Value} ({valuation:C})");
+                if (Stocks.ContainsKey(stock.Key))
+                {
+                    decimal valuation = (Stocks[stock.Key] * stock.Value);
+                    totalValue += valuation;
+
+                    Console.Write($"\n- {stock.Key}: {stock.Value} ({valuation:C})");
+                }
+                else
+                {
+                    Console.Write($"\n- {stock.Key}: {stock.Value} (???)");
+                }
             }
         }
 
         Console.Write($"\n\nBakiye: {account.Balance:C}");
 
-        Console.Write($"\n\nToplam: {totalValue:C}\n");
+        Console.Write($"\n\nToplam: {totalValue:C}");
     }
 }
 
@@ -451,7 +462,10 @@ public static class MenuSystem
     {
         while (true)
         {
-            Console.Write("\n\n[ Yönetici Seçenekleri ]\n\n1. Hisse Düzenle\n2. Hisse Kaldır\n3. Mevcut Hisseleri Listele\n4. Kullanıcı Kaldır\n5. Mevcut Kullanıcıları Listele\n6. Çıkış Yap\n\nSeçeneğiniz: ");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write("\n\n[ Yönetici Seçenekleri ]");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("\n\n1. Hisse Düzenle\n2. Hisse Kaldır\n3. Mevcut Hisseleri Listele\n4. Kullanıcı Kaldır\n5. Mevcut Kullanıcıları Listele\n6. Çıkış Yap\n\nSeçeneğiniz: ");
 
             string choice = Console.ReadLine();
 
@@ -479,7 +493,8 @@ public static class MenuSystem
                     if (system.RemoveStock(stockSymbolToRemove))
                     {
                         Console.Write("\nHisse başarıyla silindi.");
-                    } else
+                    }
+                    else
                     {
                         Console.Write("\nHisse bulunamadı.");
                     }
@@ -523,7 +538,10 @@ public static class MenuSystem
     {
         while (true)
         {
-            Console.Write("\n\n[ Müşteri Seçenekleri ]\n\n1. Hisse Satın Al\n2. Hisse Sat\n3. Mevcut Hisseleri Listele\n4. Bakiye Ekle\n5. Portföy Görüntüle\n6. Çıkış Yap\n7. Hesabı Sil\n\nSeçeneğiniz: ");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write("\n\n[ Müşteri Seçenekleri ]");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("\n\n1. Hisse Satın Al\n2. Hisse Sat\n3. Mevcut Hisseleri Listele\n4. Bakiye Ekle\n5. Portföy Görüntüle\n6. Çıkış Yap\n7. Hesabı Sil\n\nSeçeneğiniz: ");
 
             string choice = Console.ReadLine();
 
@@ -636,7 +654,7 @@ public class Program
 
                     system.Login(username, password);
                     break;
-                    
+
                 case "2": // Kayıt Ol
                     string newUsername = SafeFormatSystem.NewUsername(system, "\nKullanıcı Adı: ");
 
