@@ -1,3 +1,3 @@
-Nesneye Yönelik Programlama Projesi - Konsol Tabanlı Borsa Uygulaması
+Nesneye Yönelik Programlama Projesi - Hisse Senedi Borsa Sistemi Konsol Uygulaması
 
 notlar
