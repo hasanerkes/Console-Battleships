@@ -43,12 +43,12 @@ Kullanıcı seçenekleri için `InitialiseMenu` soyut metodu, farklı hesap tür
 Ayrıca, bir çok yerde `Customer` veya `Admin` yerine üst sınıf olan `Account` kullanılması polimorfizme örnektir.
 
 ### Kütüphane ve Koleksiyon
-- Müşteri portföyü ve hisse fiyatları için `Dictionary`, mevcut hesaplar için `List` koleksiyonları oluşturulmuştur.
-- `System.Linq` ve `System.Collections` etkin bir şekilde kullanılmıştır.
+Müşteri portföyü ve hisse fiyatları için `Dictionary`, mevcut hesaplar için `List` koleksiyonları oluşturulmuştur.
+`System.Linq` ve `System.Collections` etkin bir şekilde kullanılmıştır.
 
 ### Kullanıcı Deneyimi
-- Konsol arayüzü, renk kodları ve düzenli mesajlarla kullanıcı dostu hale getirilmiştir. Konsol çıktıları net ve anlaşılırdır.
+Konsol arayüzü, renk kodları ve düzenli mesajlarla kullanıcı dostu hale getirilmiştir. Konsol çıktıları net ve anlaşılırdır.
 
 ### Ek Özellikler
-- Task kütüphanesi; çoklu thread yapısı kullanılarak hisse fiyatları asenkron bir şekilde güncellenmektedir.
-- Basitleştirilmiş konsol kontrolü ve daha iyi kullanıcı arayüzü için `ConsoleHandler` sınıfı yapılmıştır.
+Task kütüphanesi; çoklu thread yapısı kullanılarak hisse fiyatları asenkron bir şekilde güncellenmektedir.
+Basitleştirilmiş konsol kontrolü ve daha iyi kullanıcı arayüzü için `ConsoleHandler` sınıfı yapılmıştır.
