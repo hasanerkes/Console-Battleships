@@ -36,7 +36,7 @@ Hesap `Account` soyut sınıfı ile müşteri `Customer` ve yönetici `Admin` al
 
 ### Enkapsülasyon
 Şifrelenmiş parola `_passwordHash` gizli özelliğinde saklanmış ve şifreleme `HashPassword`, şifre doğrulama `VerifyPassword` metodları özel alanlarla korunmuştur.
-Şifreleme için kullanılan metod oldukça basit ve pek koruma sağlamayan bir örnektir.
+Şifreleme için kullanılan algoritma oldukça basit ve pek koruma sağlamayan bir örnektir.
 
 ### Polimorfizm
 Kullanıcı seçenekleri için `InitialiseMenu` soyut metodu, farklı hesap türelerinde farklı şekilde uygulanmıştır.
