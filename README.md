@@ -1,6 +1,6 @@
 Nesneye Yönelik Programlama Projesi - Hisse Senedi Borsa Sistemi Konsol Uygulaması
 
-# Borsa Yönetim Sistemi
+# Borsa Sistemi
 Bu borsa sistemi projesi, kullanıcı hesaplarının yönetimini ve hisse alım-satımı, portföy yönetimi gibi gerçek bir borsa sisteminde gerçekleşebilecek işlemleri simüle etmeyi amaçlamaktadır.
 
 ## Kullanım
