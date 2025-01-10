@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading;
@@ -97,16 +98,27 @@ public class Admin : Account
 
                         break;
                     }
+
                 case "2": // Hisse Kaldır
                     {
                         ConsoleHandler.StockListVisible(false);
 
                         Console.Write("Silinecek Hisse Sembolü: ");
                         string symbol = Console.ReadLine() ?? "";
+                        symbol = symbol.ToUpperInvariant();
 
-                        if (StockExchangeHandler.RemoveStock(symbol))
+                        if (StockExchangeHandler.Stocks.ContainsKey(symbol))
                         {
-                            ConsoleHandler.PrimaryMessage("\nHisse başarıyla silindi.\n", true);
+                            Console.Write("\nHisse silme işlemini onaylamak için \"evet\" yazın: ");
+                            string response = Console.ReadLine() ?? "";
+
+                            ConsoleHandler.CustomClear();
+
+                            if (response.ToLowerInvariant() == "evet")
+                            {
+                                StockExchangeHandler.RemoveStock(symbol);
+                                ConsoleHandler.PrimaryMessage("\nHisse başarıyla silindi.\n", true);
+                            }
                         }
                         else
                         {
@@ -115,7 +127,7 @@ public class Admin : Account
 
                         break;
                     }
-
+                     
                 case "3": // Mevcut Kullanıcı Listesi
                     AccountHandler.ListUsers(this);
 
@@ -549,14 +561,9 @@ public static class StockExchangeHandler
     {
         Stocks[symbol.ToUpperInvariant()] = price;
     }
-    public static bool RemoveStock(string symbol)
+    public static void RemoveStock(string symbol)
     {
-        if (Stocks.Remove(symbol.ToUpperInvariant()))
-        {
-            return true;
-        }
-
-        return false;
+        Stocks.Remove(symbol.ToUpperInvariant());
     }
     public static void ListStocks()
     {
@@ -577,7 +584,7 @@ public static class StockExchangeHandler
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.Write(" | Fiyat: ");
                 Console.ForegroundColor = ConsoleColor.DarkGreen;
-                Console.Write($"{stock.Value:C}                                                                                     \n");
+                Console.Write($"{stock.Value:C}\n");
                 Console.ForegroundColor = ConsoleColor.White;
             }
         }
