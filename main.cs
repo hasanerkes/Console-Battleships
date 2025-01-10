@@ -566,7 +566,8 @@ public static class StockExchangeHandler
         if (Stocks.Count == 0)
         {
             Console.Write("Şu anda borsada hisse yok.\n");
-        } else
+        }
+        else
         {
             foreach (var stock in Stocks)
             {
@@ -576,7 +577,7 @@ public static class StockExchangeHandler
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.Write(" | Fiyat: ");
                 Console.ForegroundColor = ConsoleColor.DarkGreen;
-                Console.Write($"{stock.Value:C}\n");
+                Console.Write($"{stock.Value:C}                                                                                     \n");
                 Console.ForegroundColor = ConsoleColor.White;
             }
         }
