@@ -71,7 +71,7 @@ public class Admin : Account
         while (true)
         {
             ConsoleHandler.PrimaryMessage("\n[ Yönetici Seçenekleri ]\n\n1. Hisse Düzenle\n2. Hisse Kaldır\n3. Mevcut Kullanıcı Listesi\n4. Kullanıcı Kaldır\n5. Çıkış Yap\n\nSeçeneğiniz: ");
-            
+
             string choice = Console.ReadLine() ?? "";
 
             ConsoleHandler.CustomClear();
@@ -489,7 +489,7 @@ public static class AccountHandler
     {
         if (authorisedAccount.AccountType == EnumAccountType.Yonetici)
         {
-            ConsoleHandler.PrimaryMessage("Yönetici Listesi:\n");
+            ConsoleHandler.PrimaryMessage("\nYönetici Listesi:\n");
 
             foreach (var account in Accounts)
             {
@@ -631,7 +631,7 @@ public static class ConsoleHandler
         {
             StockListVisible(true);
         }
-        
+
         Console.ForegroundColor = color;
 
         try
@@ -712,7 +712,7 @@ public static class Program
         while (true)
         {
             ConsoleHandler.PrimaryMessage("\n[ Ana Menü ]\n\n1. Giriş Yap\n2. Kayıt Ol\n3. Çıkış Yap\n\nSeçeneğiniz: ");
-            
+
             string choice = Console.ReadLine() ?? "";
 
             ConsoleHandler.CustomClear();
