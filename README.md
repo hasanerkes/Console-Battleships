@@ -46,6 +46,9 @@ Ayrıca, bir çok yerde `Customer` veya `Admin` yerine üst sınıf olan `Accoun
 Müşteri portföyü ve hisse fiyatları için `Dictionary`, mevcut hesaplar için `List` koleksiyonları oluşturulmuştur.
 `System.Linq` ve `System.Collections` etkin bir şekilde kullanılmıştır.
 
+### Overload ve İsteğe Bağlı Parameter
+`ConsoleHandler` sınıfında 2 tane `PrimaryMessage` mesaj yazdırma metodu bulunmaktadır, aşırı yüklenmiş bir metod olarak 2 tanesi isteğe bağlı 3 tane parametre veya 2 tane zorunlu parametre kabul eder.
+
 ### Kullanıcı Deneyimi
 Konsol arayüzü, renk kodları ve düzenli mesajlarla kullanıcı dostu hale getirilmiştir. Konsol çıktıları net ve anlaşılırdır.
 
