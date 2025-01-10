@@ -66,11 +66,11 @@ public class Admin : Account
     public override void InitialiseMenu()
     {
         ConsoleHandler.PrimaryMessage("\nMerhaba, ");
-        ConsoleHandler.PrimaryMessage($"{Username}!\n", ConsoleColor.Green, true);
+        ConsoleHandler.PrimaryMessage($"{Username}!\n", ConsoleColor.Magenta, true);
 
         while (true)
         {
-            ConsoleHandler.PrimaryMessage("\n[ Yönetici Seçenekleri ]\n\n1. Hisse Düzenle\n2. Hisse Kaldır\n3. Mevcut Kullanıcı Listesi\n4. Kullanıcı Kaldır\n5. Çıkış Yap\n\nSeçeneğiniz: ");
+            ConsoleHandler.PrimaryMessage("\n[ Yönetici Seçenekleri ]\n\n1. Hisse Ekle/Düzenle\n2. Hisse Kaldır\n3. Mevcut Kullanıcı Listesi\n4. Kullanıcı Kaldır\n5. Çıkış Yap\n\nSeçeneğiniz: ");
 
             string choice = Console.ReadLine() ?? "";
 
@@ -140,6 +140,8 @@ public class Admin : Account
                     }
 
                 case "5": // Çıkış Yap
+                    ConsoleHandler.PrimaryMessage("\nÇıkış yapıldı.\n", true);
+
                     return;
 
                 default:
@@ -564,19 +566,19 @@ public static class StockExchangeHandler
         if (Stocks.Count == 0)
         {
             Console.Write("Şu anda borsada hisse yok.\n");
-            return;
-        }
-
-        foreach (var stock in Stocks)
+        } else
         {
-            Console.Write("Hisse: ");
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write($"{stock.Key}");
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.Write(" | Fiyat: ");
-            Console.ForegroundColor = ConsoleColor.DarkGreen;
-            Console.Write($"{stock.Value:C}\n");
-            Console.ForegroundColor = ConsoleColor.White;
+            foreach (var stock in Stocks)
+            {
+                Console.Write("Hisse: ");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write($"{stock.Key}");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write(" | Fiyat: ");
+                Console.ForegroundColor = ConsoleColor.DarkGreen;
+                Console.Write($"{stock.Value:C}\n");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
         }
 
         Console.ForegroundColor = ConsoleColor.White;
@@ -592,12 +594,12 @@ public static class StockExchangeHandler
         {
             Thread.Sleep(5000);
 
-            lock (StockExchangeHandler.Stocks)
+            lock (Stocks)
 
             {
-                foreach (var stockKey in StockExchangeHandler.Stocks.Keys.ToList())
+                foreach (var stockKey in Stocks.Keys.ToList())
                 {
-                    decimal newPrice = StockExchangeHandler.Stocks[stockKey] + ((decimal)(random.NextDouble() - 0.5) * 0.2m * StockExchangeHandler.Stocks[stockKey]);
+                    decimal newPrice = Stocks[stockKey] + ((decimal)(random.NextDouble() - 0.5) * 0.2m * Stocks[stockKey]);
 
                     EditStock(stockKey, newPrice);
                 }
